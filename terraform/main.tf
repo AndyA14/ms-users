@@ -100,4 +100,3 @@ resource "aws_instance" "server" {
     Name = "server-${local.name}"
   }
 }
-
