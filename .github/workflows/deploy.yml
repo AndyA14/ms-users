@@ -1,35 +1,22 @@
-name: 1. Deploy Infrastructure
-
-on:
-  push:
-    branches: ["main"]  # O "master" si tu rama se llama así
-  workflow_dispatch:      # Mantén esto para poder ejecutarlo manualmente si es necesario
+name: Destroy Infrastructure
+on: workflow_dispatch
 
 jobs:
-  terraform:
+  destroy:
     runs-on: ubuntu-latest
     steps:
-      # Paso 1: Hacer checkout del repositorio
-      - uses: actions/checkout@v4
-      
-      # Paso 2: Instalar Terraform
-      - uses: hashicorp/setup-terraform@v2
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      # Paso 3: Ejecutar Terraform Apply
-      - name: Terraform Apply
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Destroy
         env:
-          # GitHub inyecta las credenciales de LA CUENTA configurada en los secrets
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
         run: |
           cd terraform
           terraform init
-          terraform apply -auto-approve
-
-      # Paso 4: Guardar el KeyPair generado como artefacto para poder descargarlo
-      - name: Guardar KeyPair
-        uses: actions/upload-artifact@v4
-        with:
-          name: ssh-key
-          path: terraform/*.pem
+          terraform destroy -auto-approve
