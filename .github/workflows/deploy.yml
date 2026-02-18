@@ -18,8 +18,6 @@ env:
   SERVICE_PORT:   "8001"
   DOCKER_IMAGE:   "aceofglass14/ms-users:latest"
   AWS_REGION:     "us-east-1"
-  # El nombre del bucket S3 para el estado de Terraform.
-  # Debe ser único globalmente. Cambia "123456789" por tu AWS Account ID.
   TF_STATE_BUCKET: "ms-users-tfstate-${{ secrets.AWS_ACCOUNT_ID }}"
 
 jobs:
@@ -46,9 +44,8 @@ jobs:
           context: .
           push: true
           tags: ${{ env.DOCKER_IMAGE }}
-          # Cache para builds más rápidos
           cache-from: type=registry,ref=${{ env.DOCKER_IMAGE }}
-          cache-to:   type=inline
+          cache-to: type=inline
 
   # ════════════════════════════════════════════════════════════════════════════
   # JOB 2: Provisionar / Actualizar infraestructura con Terraform
@@ -145,7 +142,6 @@ jobs:
       - name: Terraform Plan
         working-directory: terraform
         run: terraform plan -out=tfplan
-        # Plan muestra exactamente qué va a cambiar (útil para debug)
 
       # ── APPLY: En cada push a main ────────────────────────────────────────
       - name: Terraform Apply
