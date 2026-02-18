@@ -40,8 +40,8 @@ jobs:
         with:
           context: .
           push: true
-          tags: $DOCKER_IMAGE
-          cache-from: type=registry,ref=$DOCKER_IMAGE
+          tags: ${{ env.DOCKER_IMAGE }}
+          cache-from: type=registry,ref=${{ env.DOCKER_IMAGE }}
           cache-to: type=inline
 
   terraform:
@@ -51,11 +51,11 @@ jobs:
 
     # Variables de Terraform inyectadas como env vars TF_VAR_*
     env:
-      TF_VAR_service_name: $SERVICE_NAME
-      TF_VAR_port: $SERVICE_PORT
+      TF_VAR_service_name: ${{ env.SERVICE_NAME }}
+      TF_VAR_port: ${{ env.SERVICE_PORT }}
       TF_VAR_instance_type: "t2.micro"
-      TF_VAR_region: $AWS_REGION
-      TF_VAR_image_name: $DOCKER_IMAGE
+      TF_VAR_region: ${{ env.AWS_REGION }}
+      TF_VAR_image_name: ${{ env.DOCKER_IMAGE }}
       TF_VAR_deploy_timestamp: ${{ github.sha }}
       TF_VAR_docker_username: ${{ secrets.DOCKER_USERNAME }}
       TF_VAR_docker_password: ${{ secrets.DOCKER_PASSWORD }}
@@ -75,7 +75,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_ACCOUNT1 }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_ACCOUNT1 }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN_ACCOUNT1 }}
-          aws-region: $AWS_REGION
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Get AWS Account ID
         id: aws_account
@@ -95,7 +95,7 @@ jobs:
             echo "🪣 Creando bucket S3 para estado de Terraform..."
             aws s3api create-bucket \
               --bucket "$BUCKET" \
-              --region $AWS_REGION
+              --region ${{ env.AWS_REGION }}
 
             aws s3api put-bucket-versioning \
               --bucket "$BUCKET" \
@@ -120,7 +120,7 @@ jobs:
           terraform init \
             -backend-config="bucket=${{ steps.aws_account.outputs.bucket_name }}" \
             -backend-config="key=terraform.tfstate" \
-            -backend-config="region=$AWS_REGION"
+            -backend-config="region=${{ env.AWS_REGION }}"
 
       - name: Terraform Validate
         working-directory: terraform
@@ -137,8 +137,8 @@ jobs:
           terraform apply -auto-approve tfplan
           echo "╔══════════════════════════════════════════╗"
           echo "║  ✅ Despliegue completado                ║"
-          echo "║  Servicio: $SERVICE_NAME                ║"
-          echo "║  Commit:   ${{ github.sha }}            ║"
+          echo "║  Servicio: ${{ env.SERVICE_NAME }}       ║"
+          echo "║  Commit:   ${{ github.sha }}             ║"
           echo "╚══════════════════════════════════════════╝"
           terraform output
 
@@ -146,7 +146,7 @@ jobs:
         if: ${{ github.event.inputs.action == 'destroy' }}
         working-directory: terraform
         run: |
-          echo "⚠️  DESTRUYENDO infraestructura de $SERVICE_NAME..."
+          echo "⚠️  DESTRUYENDO infraestructura de ${{ env.SERVICE_NAME }}..."
           terraform destroy -auto-approve
           echo "🗑️  Infraestructura eliminada."
 
