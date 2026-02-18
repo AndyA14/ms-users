@@ -2,6 +2,7 @@ provider "aws" {
   region = var.region
 }
 
+# ── VPC y Subnets ─────────────────────────────────────────────────────────────
 data "aws_vpc" "default" { default = true }
 
 data "aws_subnets" "default" {
@@ -39,63 +40,18 @@ resource "aws_security_group" "sg" {
   }
 }
 
-# ── SSM Parameters (evita exponer secretos en user_data) ─────────────────────
-# La contraseña se guarda en SSM y la instancia la lee en runtime.
-resource "aws_ssm_parameter" "docker_password" {
-  name  = "/${var.service_name}/docker_password"
-  type  = "SecureString"
-  value = var.docker_password
-}
-
-resource "aws_ssm_parameter" "postgres_url" {
-  name  = "/${var.service_name}/postgres_url"
-  type  = "SecureString"
-  value = var.postgres_url
-}
-
-resource "aws_ssm_parameter" "mongo_url" {
-  name  = "/${var.service_name}/mongo_url"
-  type  = "SecureString"
-  value = var.mongo_url
-}
-
-# ── IAM Role para que EC2 pueda leer SSM ──────────────────────────────────────
-resource "aws_iam_role" "ec2_ssm_role" {
-  name = "${var.service_name}-ec2-role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action    = "sts:AssumeRole"
-      Effect    = "Allow"
-      Principal = { Service = "ec2.amazonaws.com" }
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "ssm_policy" {
-  role       = aws_iam_role.ec2_ssm_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"
-}
-
-resource "aws_iam_instance_profile" "profile" {
-  name = "${var.service_name}-profile"
-  role = aws_iam_role.ec2_ssm_role.name
-}
-
 # ── Launch Template ────────────────────────────────────────────────────────────
 resource "aws_launch_template" "lt" {
-  name_prefix            = "${var.service_name}-lt"
-  image_id               = "ami-0c02fb55956c7d316"
-  instance_type          = var.instance_type
-  key_name               = var.key_name
-  iam_instance_profile   { name = aws_iam_instance_profile.profile.name }
+  name_prefix   = "${var.service_name}-lt"
+  image_id      = "ami-0c02fb55956c7d316"
+  instance_type = var.instance_type
+  key_name      = var.key_name
 
   network_interfaces {
     associate_public_ip_address = true
     security_groups             = [aws_security_group.sg.id]
   }
 
-  # 🔐 Los secretos se leen desde SSM en runtime, NUNCA se imprimen en user_data
   user_data = base64encode(<<-EOF
     #!/bin/bash
     exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
@@ -109,21 +65,17 @@ resource "aws_launch_template" "lt" {
     swapon /swapfile
     echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
 
-    # 2. Instalar Docker y AWS CLI
+    # 2. Instalar Docker
     yum update -y
     amazon-linux-extras install docker -y
     service docker start
     usermod -a -G docker ec2-user
     systemctl enable docker
 
-    # 3. Leer secretos desde SSM (nunca están en texto plano aquí)
-    REGION="${var.region}"
-    DOCKER_PASS=$(aws ssm get-parameter --name "/${var.service_name}/docker_password" \
-      --with-decryption --region $REGION --query Parameter.Value --output text)
-    POSTGRES_URL=$(aws ssm get-parameter --name "/${var.service_name}/postgres_url" \
-      --with-decryption --region $REGION --query Parameter.Value --output text)
-    MONGO_URL=$(aws ssm get-parameter --name "/${var.service_name}/mongo_url" \
-      --with-decryption --region $REGION --query Parameter.Value --output text)
+    # 3. Variables pasadas directo desde Terraform
+    DOCKER_PASS="${var.docker_password}"
+    POSTGRES_URL="${var.postgres_url}"
+    MONGO_URL="${var.mongo_url}"
 
     # 4. Docker Login
     echo "$DOCKER_PASS" | docker login -u "${var.docker_username}" --password-stdin
