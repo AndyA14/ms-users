@@ -101,4 +101,19 @@ resource "aws_instance" "server" {
   }
 }
 
+# 5. Outputs
 
+# Output de la llave privada
+output "key_pair_private_key_file" {
+  value = local_file.pem.filename
+}
+
+# Output del primer puerto de ingress (puerto especificado en la primera regla)
+output "security_group_ingress_port" {
+  value = [for ingress in aws_security_group.sg.ingress : ingress.from_port][0]
+}
+
+# Output del estado de la instancia
+output "instance_state" {
+  value = aws_instance.server.instance_state
+}
