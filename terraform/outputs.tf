@@ -1,81 +1,69 @@
-################################################################################
-# OUTPUTS
-################################################################################
-
-# Output del ID del VPC creado
-output "vpc_id" {
-  description = "ID del VPC por defecto"
-  value       = data.aws_vpc.default.id
-}
-
-# Output de las subredes asociadas al VPC
-output "subnet_ids" {
-  description = "IDs de las subredes asociadas al VPC por defecto"
-  value       = data.aws_subnets.default.ids
-}
-
-# Output del ID del Security Group creado
-output "security_group_id" {
-  description = "ID del Security Group para el servicio"
-  value       = aws_security_group.sg.id
-}
-
-# Output del ID del Launch Template
-output "launch_template_id" {
-  description = "ID del Launch Template"
-  value       = aws_launch_template.lt.id
-}
-
-# Output del ID del Load Balancer creado
-output "load_balancer_id" {
-  description = "ID del Load Balancer creado"
-  value       = aws_lb.alb.id
-}
-
-# Output del ARN del Target Group
-output "target_group_arn" {
-  description = "ARN del Target Group asociado al Load Balancer"
-  value       = aws_lb_target_group.tg.arn
-}
-
-# Output del ARN del Listener
-output "listener_arn" {
-  description = "ARN del Listener del Load Balancer"
-  value       = aws_lb_listener.listener.arn
-}
-
-# Output del nombre del servicio (útil para identificar la aplicación)
-output "service_name" {
-  description = "Nombre del servicio"
-  value       = var.service_name
-}
-
-# Output del nombre de la Key Pair asociada a la instancia EC2
 output "key_pair_name" {
-  description = "Nombre de la Key Pair utilizada para la instancia EC2"
+  description = "The name of the SSH Key Pair"
   value       = aws_key_pair.kp.key_name
 }
 
-# Output del ARN del Auto Scaling Group
-output "auto_scaling_group_arn" {
-  description = "ARN del Auto Scaling Group"
-  value       = aws_autoscaling_group.asg.arn
+output "key_pair_public_key" {
+  description = "The public key of the generated SSH Key Pair"
+  value       = tls_private_key.pk.public_key_openssh
 }
 
-# Output del Health Check del Target Group
-output "health_check_path" {
-  description = "Health check path configurado en el Target Group"
-  value       = aws_lb_target_group.tg.health_check[0].path
+output "key_pair_private_key_file" {
+  description = "The file path to the private key"
+  value       = local.pem.filename
 }
 
-# Output de la URL pública de la instancia EC2 (si la IP pública está asociada)
+output "security_group_id" {
+  description = "The ID of the security group"
+  value       = aws_security_group.sg.id
+}
+
+output "security_group_name" {
+  description = "The name of the security group"
+  value       = aws_security_group.sg.name
+}
+
+output "security_group_ingress_port" {
+  description = "The port that is open for the service (configured as local.port)"
+  value       = aws_security_group.sg.ingress[0].from_port
+}
+
+output "instance_id" {
+  description = "The ID of the EC2 instance"
+  value       = aws_instance.server.id
+}
+
 output "instance_public_ip" {
-  description = "Dirección IP pública de la instancia EC2 (si está asociada)"
-  value       = aws_launch_template.lt.network_interfaces[0].associate_public_ip_address ? "Pública disponible" : "No asociada"
+  description = "The public IP address of the EC2 instance"
+  value       = aws_instance.server.public_ip
 }
 
-# Output del nombre de la imagen de Docker (utilizada en el user_data)
-output "docker_image_name" {
-  description = "Nombre de la imagen de Docker utilizada"
-  value       = var.image_name
+output "instance_private_ip" {
+  description = "The private IP address of the EC2 instance"
+  value       = aws_instance.server.private_ip
+}
+
+output "instance_public_dns" {
+  description = "The public DNS of the EC2 instance"
+  value       = aws_instance.server.public_dns
+}
+
+output "instance_private_dns" {
+  description = "The private DNS of the EC2 instance"
+  value       = aws_instance.server.private_dns
+}
+
+output "instance_type" {
+  description = "The instance type of the EC2 instance"
+  value       = aws_instance.server.instance_type
+}
+
+output "instance_ami" {
+  description = "The AMI ID used for the EC2 instance"
+  value       = aws_instance.server.ami
+}
+
+output "instance_state" {
+  description = "The current state of the EC2 instance"
+  value       = aws_instance.server.state
 }
