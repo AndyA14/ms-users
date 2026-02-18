@@ -1,4 +1,5 @@
-name: Deploy ms-users (Account 1)
+
+name: Deploy ms-users
 
 on:
   push:
@@ -12,13 +13,27 @@ on:
         type: choice
         options: [apply, destroy]
 
+env:
+  # ── Configuración fija del servicio ─────────────────────────────────────
+  SERVICE_NAME:   "ms-users"
+  SERVICE_PORT:   "8001"
+  DOCKER_IMAGE:   "aceofglass14/ms-users:latest"
+  AWS_REGION:     "us-east-1"
+  # El nombre del bucket S3 para el estado de Terraform.
+  # Debe ser único globalmente. Cambia "123456789" por tu AWS Account ID.
+  TF_STATE_BUCKET: "ms-users-tfstate-${{ vars.AWS_ACCOUNT_ID }}"
+
 jobs:
-  # ── Paso 1: Build & Push imagen Docker ────────────────────────────────────
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 1: Construir y subir la imagen Docker
+  # ════════════════════════════════════════════════════════════════════════════
   docker:
-    name: Build & Push Docker Image
+    name: "🐳 Build & Push Docker Image"
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -31,57 +46,136 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKER_IMAGE_NAME }}:latest
+          tags: ${{ env.DOCKER_IMAGE }}
+          # Cache para builds más rápidos
+          cache-from: type=registry,ref=${{ env.DOCKER_IMAGE }}
+          cache-to:   type=inline
 
-  # ── Paso 2: Terraform ──────────────────────────────────────────────────────
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 2: Provisionar / Actualizar infraestructura con Terraform
+  # ════════════════════════════════════════════════════════════════════════════
   terraform:
-    name: Terraform ${{ github.event.inputs.action || 'apply' }}
+    name: "🏗️ Terraform ${{ github.event.inputs.action || 'apply' }}"
     runs-on: ubuntu-latest
     needs: docker
 
+    # Variables de Terraform — todas inyectadas como env vars TF_VAR_*
     env:
-      TF_VAR_service_name:      ${{ secrets.SERVICE_NAME }}
-      TF_VAR_port:              ${{ secrets.PORT }}
+      TF_VAR_service_name:      ${{ env.SERVICE_NAME }}
+      TF_VAR_port:              ${{ env.SERVICE_PORT }}
+      TF_VAR_instance_type:     "t2.micro"
+      TF_VAR_region:            ${{ env.AWS_REGION }}
+      TF_VAR_image_name:        ${{ env.DOCKER_IMAGE }}
+      TF_VAR_deploy_timestamp:  ${{ github.sha }}   # ← clave anti-duplicados
       TF_VAR_docker_username:   ${{ secrets.DOCKER_USERNAME }}
       TF_VAR_docker_password:   ${{ secrets.DOCKER_PASSWORD }}
-      TF_VAR_image_name:        ${{ secrets.DOCKER_IMAGE_NAME }}
       TF_VAR_rabbitmq_host:     ${{ secrets.RABBITMQ_HOST }}
       TF_VAR_rabbitmq_user:     ${{ secrets.RABBITMQ_USER }}
       TF_VAR_rabbitmq_pass:     ${{ secrets.RABBITMQ_PASS }}
       TF_VAR_postgres_url:      ${{ secrets.POSTGRES_URL }}
       TF_VAR_mongo_url:         ${{ secrets.MONGO_URL }}
-      TF_VAR_key_name:          ${{ secrets.KEY_NAME }}
-      TF_VAR_instance_type:     "t2.micro"
-      TF_VAR_region:            "us-east-1"
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
+      # ── Configurar credenciales AWS ──────────────────────────────────────
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID_ACCOUNT1 }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_ACCOUNT1 }}
           aws-session-token:     ${{ secrets.AWS_SESSION_TOKEN_ACCOUNT1 }}
-          aws-region:            us-east-1
+          aws-region:            ${{ env.AWS_REGION }}
 
-      - uses: hashicorp/setup-terraform@v2
+      # ── Obtener Account ID para nombre único del bucket ──────────────────
+      - name: Get AWS Account ID
+        id: aws_account
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "account_id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
+          echo "bucket_name=ms-users-tfstate-$ACCOUNT_ID" >> $GITHUB_OUTPUT
 
+      # ── Crear bucket S3 para estado (idempotente, no falla si ya existe) ─
+      - name: Create S3 Backend Bucket (if not exists)
+        run: |
+          BUCKET="${{ steps.aws_account.outputs.bucket_name }}"
+          echo "Verificando bucket: $BUCKET"
+
+          if aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
+            echo "✅ Bucket ya existe."
+          else
+            echo "🪣 Creando bucket S3 para estado de Terraform..."
+            aws s3api create-bucket \
+              --bucket "$BUCKET" \
+              --region ${{ env.AWS_REGION }}
+
+            # Habilitar versionado para recuperar estados anteriores
+            aws s3api put-bucket-versioning \
+              --bucket "$BUCKET" \
+              --versioning-configuration Status=Enabled
+
+            # Bloquear acceso público al bucket de estado
+            aws s3api put-public-access-block \
+              --bucket "$BUCKET" \
+              --public-access-block-configuration \
+                "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+
+            echo "✅ Bucket creado: $BUCKET"
+          fi
+
+      # ── Instalar Terraform ────────────────────────────────────────────────
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "1.7.0"
+
+      # ── terraform init con backend S3 ─────────────────────────────────────
       - name: Terraform Init
-        run: terraform init
         working-directory: terraform
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ steps.aws_account.outputs.bucket_name }}" \
+            -backend-config="key=terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}"
 
       - name: Terraform Validate
-        run: terraform validate
         working-directory: terraform
+        run: terraform validate
 
+      - name: Terraform Plan
+        working-directory: terraform
+        run: terraform plan -out=tfplan
+        # Plan muestra exactamente qué va a cambiar (útil para debug)
+
+      # ── APPLY: En cada push a main ────────────────────────────────────────
       - name: Terraform Apply
         if: ${{ github.event.inputs.action != 'destroy' }}
-        run: terraform apply -auto-approve
         working-directory: terraform
+        run: |
+          terraform apply -auto-approve tfplan
+          echo ""
+          echo "╔══════════════════════════════════════════╗"
+          echo "║  ✅ Despliegue completado                ║"
+          echo "║  Servicio: ${{ env.SERVICE_NAME }}       ║"
+          echo "║  Commit:   ${{ github.sha }}             ║"
+          echo "╚══════════════════════════════════════════╝"
+          terraform output
 
-      # 🔴 Destroy SOLO si se dispara manualmente con action=destroy
+      # ── DESTROY: Solo si se dispara manualmente con action=destroy ────────
       - name: Terraform Destroy
         if: ${{ github.event.inputs.action == 'destroy' }}
-        run: terraform destroy -auto-approve
         working-directory: terraform
+        run: |
+          echo "⚠️  DESTRUYENDO infraestructura de ${{ env.SERVICE_NAME }}..."
+          terraform destroy -auto-approve
+          echo "🗑️  Infraestructura eliminada."
+
+      # ── Guardar la llave SSH como artifact descargable ────────────────────
+      - name: Upload SSH Key
+        if: ${{ github.event.inputs.action != 'destroy' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ssh-key-${{ env.SERVICE_NAME }}
+          path: terraform/${{ env.SERVICE_NAME }}-key.pem
+          retention-days: 7   # Disponible 7 días para debugging
