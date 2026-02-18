@@ -1,4 +1,3 @@
-
 name: Deploy ms-users
 
 on:
@@ -21,7 +20,7 @@ env:
   AWS_REGION:     "us-east-1"
   # El nombre del bucket S3 para el estado de Terraform.
   # Debe ser único globalmente. Cambia "123456789" por tu AWS Account ID.
-  TF_STATE_BUCKET: "ms-users-tfstate-${{ vars.AWS_ACCOUNT_ID }}"
+  TF_STATE_BUCKET: "ms-users-tfstate-${{ secrets.AWS_ACCOUNT_ID }}"
 
 jobs:
   # ════════════════════════════════════════════════════════════════════════════
