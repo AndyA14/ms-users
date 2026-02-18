@@ -51,7 +51,7 @@ resource "local_file" "pem" {
 
 # 3. Security Group
 resource "aws_security_group" "sg" {
-  name   = "sg-${local.name}"
+  name   = "${local.name}-sg"  # Cambié el nombre para que no empiece con sg-
   vpc_id = data.aws_vpc.default.id
 
   ingress {
@@ -99,4 +99,9 @@ resource "aws_instance" "server" {
   tags = {
     Name = "server-${local.name}"
   }
+}
+
+# 5. Output del nombre de la llave privada
+output "key_pair_private_key_file" {
+  value = local_file.pem.filename
 }
