@@ -22,42 +22,6 @@ output "security_group_id" {
 }
 
 # ─────────────────────────────────────────────────────────────
-# SSM Parameters
-# ─────────────────────────────────────────────────────────────
-
-output "ssm_docker_password_name" {
-  description = "Nombre del parámetro SSM para Docker password"
-  value       = aws_ssm_parameter.docker_password.name
-  sensitive   = true
-}
-
-output "ssm_postgres_url_name" {
-  description = "Nombre del parámetro SSM para Postgres URL"
-  value       = aws_ssm_parameter.postgres_url.name
-  sensitive   = true
-}
-
-output "ssm_mongo_url_name" {
-  description = "Nombre del parámetro SSM para Mongo URL"
-  value       = aws_ssm_parameter.mongo_url.name
-  sensitive   = true
-}
-
-# ─────────────────────────────────────────────────────────────
-# IAM
-# ─────────────────────────────────────────────────────────────
-
-output "ec2_role_name" {
-  description = "Nombre del IAM Role asignado a EC2"
-  value       = aws_iam_role.ec2_ssm_role.name
-}
-
-output "instance_profile_name" {
-  description = "Nombre del Instance Profile"
-  value       = aws_iam_instance_profile.profile.name
-}
-
-# ─────────────────────────────────────────────────────────────
 # Launch Template
 # ─────────────────────────────────────────────────────────────
 
