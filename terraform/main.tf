@@ -1,6 +1,9 @@
 terraform {
   required_providers {
-    aws = { source = "hashicorp/aws", version = "~> 5.0" }
+    aws = {
+      source = "hashicorp/aws"
+      version = "~> 5.0"
+    }
   }
 }
 
@@ -11,16 +14,22 @@ provider "aws" {
 
 # 👇 SOLO CAMBIA ESTO EN CADA REPO 👇
 locals {
-  name  = "ms-users"               # ms-users, ms-auth, etc.
-  port  = 8001                     # 8001, 8002, etc.
+  name  = "ms-users"  # ms-users, ms-auth, etc.
+  port  = 8001        # 8001, 8002, etc.
   image = "aceofglass14/ms-users:latest"
 }
 # 👆 ----------------------------- 👆
 
 # 1. VPC Default (Cada cuenta tiene una propia, así que no hay conflicto)
-data "aws_vpc" "default" { default = true }
+data "aws_vpc" "default" {
+  default = true
+}
+
 data "aws_subnets" "default" {
-  filter { name = "vpc-id"; values = [data.aws_vpc.default.id] }
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
 }
 
 # 2. Key Pair (Se crea una nueva en cada cuenta)
@@ -28,10 +37,12 @@ resource "tls_private_key" "pk" {
   algorithm = "RSA"
   rsa_bits  = 4096
 }
+
 resource "aws_key_pair" "kp" {
   key_name   = "key-${local.name}"
   public_key = tls_private_key.pk.public_key_openssh
 }
+
 resource "local_file" "pem" {
   filename        = "${path.module}/${local.name}.pem"
   content         = tls_private_key.pk.private_key_pem
@@ -40,8 +51,8 @@ resource "local_file" "pem" {
 
 # 3. Security Group
 resource "aws_security_group" "sg" {
-  name        = "sg-${local.name}"
-  vpc_id      = data.aws_vpc.default.id
+  name   = "sg-${local.name}"
+  vpc_id = data.aws_vpc.default.id
 
   ingress {
     from_port   = local.port
@@ -49,12 +60,14 @@ resource "aws_security_group" "sg" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   ingress { # SSH
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -65,9 +78,9 @@ resource "aws_security_group" "sg" {
 
 # 4. Instancia EC2 (Microservicio)
 resource "aws_instance" "server" {
-  ami           = "ami-0c02fb55956c7d316" # Amazon Linux 2 (us-east-1)
-  instance_type = "t2.micro"
-  key_name      = aws_key_pair.kp.key_name
+  ami                    = "ami-0c02fb55956c7d316"  # Amazon Linux 2 (us-east-1)
+  instance_type          = "t2.micro"
+  key_name               = aws_key_pair.kp.key_name
   vpc_security_group_ids = [aws_security_group.sg.id]
 
   # User Data para instalar Docker al nacer
@@ -78,6 +91,9 @@ resource "aws_instance" "server" {
     service docker start
     systemctl enable docker
     usermod -a -G docker ec2-user
+
+    # Ejecutar Docker Pull para la imagen del microservicio
+    docker pull ${local.image}
   EOF
 
   tags = {

@@ -1,16 +1,24 @@
 name: 1. Deploy Infrastructure
-on: workflow_dispatch
+
+on:
+  push:
+    branches: ["main"]  # O "master" si tu rama se llama así
+  workflow_dispatch:      # Mantén esto para poder ejecutarlo manualmente si es necesario
 
 jobs:
   terraform:
     runs-on: ubuntu-latest
     steps:
+      # Paso 1: Hacer checkout del repositorio
       - uses: actions/checkout@v4
+      
+      # Paso 2: Instalar Terraform
       - uses: hashicorp/setup-terraform@v2
 
+      # Paso 3: Ejecutar Terraform Apply
       - name: Terraform Apply
         env:
-          # GitHub inyecta las credenciales de LA CUENTA que configuraste en este repo
+          # GitHub inyecta las credenciales de LA CUENTA configurada en los secrets
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
@@ -19,6 +27,7 @@ jobs:
           terraform init
           terraform apply -auto-approve
 
+      # Paso 4: Guardar el KeyPair generado como artefacto para poder descargarlo
       - name: Guardar KeyPair
         uses: actions/upload-artifact@v4
         with:
