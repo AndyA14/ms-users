@@ -101,7 +101,4 @@ resource "aws_instance" "server" {
   }
 }
 
-# 5. Output del nombre de la llave privada
-output "key_pair_private_key_file" {
-  value = local_file.pem.filename
-}
+
