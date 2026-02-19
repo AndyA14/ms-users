@@ -1,6 +1,6 @@
 output "instance_public_ip" {
   description = "La dirección IP pública de la instancia EC2"
-  value       = aws_autoscaling_group.asg.instances[0].public_ip
+  value       = aws_launch_template.lt.latest_version
 }
 
 output "alb_dns_name" {
@@ -10,7 +10,7 @@ output "alb_dns_name" {
 
 output "instance_id" {
   description = "ID de la instancia EC2 lanzada"
-  value       = aws_autoscaling_group.asg.instances[0].id
+  value       = aws_launch_template.lt.latest_version
 }
 
 output "key_pair_name" {
@@ -40,10 +40,10 @@ output "target_group_arn" {
 
 output "bucket_name" {
   description = "Nombre del bucket de S3 para el estado de Terraform"
-  value       = "tf-state-ms-users-unique-123" # Cambia esto si el nombre del bucket es diferente
+  value       = "tf-state-ms-users-exam-2026" # Cambia esto si el nombre del bucket es diferente
 }
 
 output "dynamodb_table_name" {
   description = "Nombre de la tabla DynamoDB para bloqueo del estado"
-  value       = "tf-locks-ms-users" # Cambia esto si el nombre de la tabla es diferente
+  value       = "tf-locks-ms-users-exam" # Cambia esto si el nombre de la tabla es diferente
 }
