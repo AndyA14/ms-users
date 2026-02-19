@@ -5,11 +5,17 @@ jobs:
   destroy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Plan (Destruction)
+        run: |
+          cd terraform
+          terraform init
+          terraform plan -destroy
 
       - name: Terraform Destroy
         env:
@@ -18,5 +24,4 @@ jobs:
           AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
         run: |
           cd terraform
-          terraform init
           terraform destroy -auto-approve
