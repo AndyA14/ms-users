@@ -78,17 +78,12 @@ output "autoscaling_group_launch_template_version" {
   description = "Versión del Launch Template en el Auto Scaling Group"
 }
 
-# Instancias dentro del Auto Scaling Group (ASG)
 output "asg_instances_public_ips" {
-  value = flatten([
-    for instance in data.aws_instances.asg_instances.instances : instance.public_ip
-  ])
-  description = "Las IPs públicas de las instancias en el Auto Scaling Group"
+  description = "IPs públicas de las instancias del ASG"
+  value       = data.aws_instances.asg_instances.public_ips
 }
 
 output "asg_instances_private_ips" {
-  value = flatten([
-    for instance in data.aws_instances.asg_instances.instances : instance.private_ip
-  ])
-  description = "Las IPs privadas de las instancias en el Auto Scaling Group"
+  description = "IPs privadas de las instancias del ASG"
+  value       = data.aws_instances.asg_instances.private_ips
 }

@@ -181,3 +181,15 @@ resource "aws_autoscaling_group" "asg" {
     strategy = "Rolling"
   }
 }
+
+############################################
+# DATA SOURCE PARA ASG INSTANCES
+############################################
+data "aws_instances" "asg_instances" {
+  filter {
+    name   = "tag:aws:autoscaling:groupName"
+    values = [aws_autoscaling_group.asg.name]
+  }
+  
+  depends_on = [aws_autoscaling_group.asg]
+}
