@@ -1,5 +1,10 @@
 name: Destroy Infrastructure
-on: workflow_dispatch
+
+# Se activa cuando se hace un push a la rama main (o la que decidas)
+on:
+  push:
+    branches:
+      - main  # O la rama en la que quieras que se ejecute (ej. "master")
 
 jobs:
   destroy:
@@ -11,12 +16,14 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
 
+      # Paso para hacer un plan de destrucción (opcional, pero recomendable)
       - name: Terraform Plan (Destruction)
         run: |
           cd terraform
           terraform init
-          terraform plan -destroy
+          terraform plan -destroy -out=tfplan
 
+      # Paso para destruir la infraestructura
       - name: Terraform Destroy
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
