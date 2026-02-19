@@ -44,6 +44,20 @@ jobs:
             
           terraform apply -auto-approve
 
+      # 3️⃣ PASO NUEVO: Esperar al ASG y capturar los Outputs
+      - name: Wait for ASG and Refresh Outputs
+        run: |
+          cd terraform
+          echo "⏳ Esperando 45 segundos para que el Auto Scaling Group levante la instancia..."
+          sleep 45
+          
+          echo "🔄 Actualizando el estado de Terraform..."
+          terraform refresh
+          
+          echo "✅ Infraestructura lista. Estos son tus Outputs:"
+          terraform output
+
+      # 4️⃣ Guardar la llave SSH como artefacto
       - name: Upload Key Pair
         uses: actions/upload-artifact@v4
         with:

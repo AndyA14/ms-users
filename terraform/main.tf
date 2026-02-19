@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     aws = {
-      source = "hashicorp/aws"
+      source  = "hashicorp/aws"
       version = "~> 5.0"
     }
   }
@@ -10,7 +10,7 @@ terraform {
     bucket         = "tf-state-ms-users-exam-2026"  # Cambia esto por un nombre único
     key            = "terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "tf-locks-ms-users-exam"      # Cambia esto por un nombre único
+    dynamodb_table = "tf-locks-ms-users-exam"       # Cambia esto por un nombre único
     encrypt        = true
   }
 }
@@ -58,7 +58,7 @@ resource "aws_key_pair" "kp" {
   public_key = tls_private_key.pk.public_key_openssh
 }
 
-resource "local_file" "pem" {
+resource "local_sensitive_file" "pem" {
   filename        = "${path.module}/${local.name}.pem"
   content         = tls_private_key.pk.private_key_pem
   file_permission = "0400"
@@ -179,18 +179,5 @@ resource "aws_autoscaling_group" "asg" {
 
   instance_refresh {
     strategy = "Rolling"
-  }
-}
-
-# --- Elastic IP (EIP) ---
-resource "aws_eip" "elastic_ip" {
-  instance = aws_autoscaling_group.asg.instances[0].id
-}
-
-# Data source to get instances from the Auto Scaling Group
-data "aws_instances" "asg_instances" {
-  filter {
-    name   = "tag:aws:autoscaling:groupName"
-    values = [aws_autoscaling_group.asg.name]
   }
 }
