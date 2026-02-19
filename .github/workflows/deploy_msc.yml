@@ -1,5 +1,7 @@
 name: 2. Deploy Microservice
-on: workflow_dispatch
+
+on:
+  workflow_dispatch
 
 env:
   # 👇 CONFIGURAR EN CADA REPO
@@ -10,27 +12,30 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      # 1. SSH Remoto para desplegar
-      - name: Deploy via SSH
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.EC2_HOST }}  # <--- IP DEL SERVIDOR QUE CREASTE EN ESTA CUENTA
+          host: ${{ secrets.EC2_HOST }}        # IP del EC2 del microservicio
           username: ec2-user
-          key: ${{ secrets.EC2_KEY }}    # <--- EL CONTENIDO DEL PEM
-          port: 443
+          key: ${{ secrets.EC2_KEY }}          # Contenido del PEM
+          port: 443                            # Usa 22 si no aplicaste el firewall hack
           script: |
-            # Login Docker
+            # Login en Docker Hub
             echo "${{ secrets.DOCKER_PASS }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
-            
-            # Limpiar anterior
+
+            # Detener y eliminar contenedor anterior si existe
             docker stop ${{ env.SVC_NAME }} || true
             docker rm ${{ env.SVC_NAME }} || true
+
+            # Descargar imagen actualizada
             docker pull ${{ env.IMAGE }}
-            
-            # Correr nuevo (CONECTANDO A LA CUENTA CENTRAL #6)
+
+            # Ejecutar contenedor (OBLIGATORIO SEGÚN INSTRUCCIÓN)
             docker run -d \
               --name ${{ env.SVC_NAME }} \
               --restart always \
