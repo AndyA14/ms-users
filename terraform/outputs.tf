@@ -102,9 +102,3 @@ output "asg_instances_private_ips" {
   description = "Las IPs privadas de las instancias en el Auto Scaling Group"
 }
 
-# Elastic IP (si se hubiera utilizado en el código)
-output "elastic_ip" {
-  value = aws_eip.infra_eip.public_ip
-  description = "Elastic IP asociado a la instancia EC2"
-  condition = length(aws_eip.infra_eip) > 0 ? true : false
-}
