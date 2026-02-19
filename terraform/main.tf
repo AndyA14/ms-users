@@ -69,7 +69,6 @@ resource "aws_security_group" "sg" {
   name        = "custom-sg-${local.name}"
   vpc_id      = data.aws_vpc.default.id
 
-  # 1. SSH Hack (443)
   ingress {
     from_port   = 443
     to_port     = 443
@@ -77,7 +76,6 @@ resource "aws_security_group" "sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # 2. App Port
   ingress {
     from_port   = local.port
     to_port     = local.port
@@ -85,7 +83,6 @@ resource "aws_security_group" "sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # 3. HTTP (Para el ALB)
   ingress {
     from_port   = 80
     to_port     = 80
@@ -93,7 +90,6 @@ resource "aws_security_group" "sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # 4. SSH Normal
   ingress {
     from_port   = 22
     to_port     = 22
@@ -121,16 +117,13 @@ resource "aws_launch_template" "lt" {
     security_groups             = [aws_security_group.sg.id]
   }
 
-  # User Data: SSH Hack + Docker Install
   user_data = base64encode(<<-EOF
     #!/bin/bash
-    # 1. SSH Hack 443
     setenforce 0
     sed -i 's/SELINUX=enforcing/SELINUX=permissive/g' /etc/selinux/config
     echo "Port 443" >> /etc/ssh/sshd_config
     systemctl restart sshd
     
-    # 2. Docker
     dnf update -y
     dnf install -y docker
     systemctl enable --now docker
@@ -154,7 +147,7 @@ resource "aws_lb_target_group" "tg" {
   protocol = "HTTP"
   vpc_id   = data.aws_vpc.default.id
   health_check {
-    path    = "/health" # Asegúrate que tu app responda aquí
+    path    = "/health"
     matcher = "200"
   }
 }
@@ -183,10 +176,21 @@ resource "aws_autoscaling_group" "asg" {
     id      = aws_launch_template.lt.id
     version = "$Latest"
   }
-  
-  # Refrescar instancias si cambia el Launch Template
+
   instance_refresh {
     strategy = "Rolling"
   }
 }
 
+# --- Elastic IP (EIP) ---
+resource "aws_eip" "elastic_ip" {
+  instance = aws_autoscaling_group.asg.instances[0].id
+}
+
+# Data source to get instances from the Auto Scaling Group
+data "aws_instances" "asg_instances" {
+  filter {
+    name   = "tag:aws:autoscaling:groupName"
+    values = [aws_autoscaling_group.asg.name]
+  }
+}
