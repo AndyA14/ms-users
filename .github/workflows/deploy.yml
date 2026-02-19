@@ -1,34 +1,51 @@
-name: Destroy Infrastructure
-
-# Se activa cuando se hace un push a la rama main (o la que decidas)
+name: Create Infrastructure
 on:
   push:
     branches:
-      - main  # O la rama en la que quieras que se ejecute (ej. "master")
+      - main  # Se ejecuta solo cuando haya un push en la rama main
+
+env:
+  # Nombres ÚNICOS para tu Backend (cámbialos en cada repo o usa sufijos)
+  BUCKET: "tf-state-ms-users-exam-2026"
+  TABLE: "tf-locks-ms-users-exam"
 
 jobs:
-  destroy:
+  terraform:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+      - uses: hashicorp/setup-terraform@v2
 
-      # Paso para hacer un plan de destrucción (opcional, pero recomendable)
-      - name: Terraform Plan (Destruction)
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      # 1️⃣ PASO CRÍTICO: Crear Backend si no existe
+      - name: Initialize Backend (S3 + Dynamo)
+        run: |
+          chmod +x scripts/init_backend.sh
+          ./scripts/init_backend.sh ${{ env.BUCKET }} ${{ env.TABLE }}
+
+      # 2️⃣ Terraform Init & Apply
+      - name: Terraform Apply
         run: |
           cd terraform
-          terraform init
-          terraform plan -destroy -out=tfplan
+          
+          # Inicializar pasando la config del backend dinámicamente
+          terraform init \
+            -backend-config="bucket=${{ env.BUCKET }}" \
+            -backend-config="dynamodb_table=${{ env.TABLE }}" \
+            -backend-config="region=us-east-1"
+            
+          terraform apply -auto-approve
 
-      # Paso para destruir la infraestructura
-      - name: Terraform Destroy
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
-        run: |
-          cd terraform
-          terraform destroy -auto-approve
+      - name: Upload Key Pair
+        uses: actions/upload-artifact@v4
+        with:
+          name: ssh-key
+          path: terraform/*.pem

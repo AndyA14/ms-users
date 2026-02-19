@@ -1,54 +1,49 @@
-# Outputs para la Key Pair
-
-output "key_pair_private_key_file" {
-  description = "Ubicación del archivo .pem de la llave privada"
-  value       = local_file.pem.filename
-  sensitive   = true
+output "instance_public_ip" {
+  description = "La dirección IP pública de la instancia EC2"
+  value       = aws_autoscaling_group.asg.instances[0].public_ip
 }
 
-# Outputs para el Security Group
-
-output "security_group_id" {
-  description = "ID del Security Group"
-  value       = aws_security_group.sg.id
+output "alb_dns_name" {
+  description = "El nombre DNS del Application Load Balancer"
+  value       = aws_lb.alb.dns_name
 }
-
-# Puerto de ingreso de la primera regla del Security Group
-output "security_group_ingress_port" {
-  description = "Puerto de ingreso configurado en el primer rule"
-  value       = [for ingress in aws_security_group.sg.ingress : ingress.from_port][0]
-}
-
-# Outputs para la Instancia EC2
 
 output "instance_id" {
-  description = "ID de la instancia EC2"
-  value       = aws_instance.server.id
+  description = "ID de la instancia EC2 lanzada"
+  value       = aws_autoscaling_group.asg.instances[0].id
 }
 
-output "instance_public_ip" {
-  description = "Dirección IP pública de la instancia EC2"
-  value       = aws_instance.server.public_ip
-}
-
-output "instance_state" {
-  description = "Estado de la instancia EC2"
-  value       = aws_instance.server.instance_state
-}
-
-output "instance_ami" {
-  description = "AMI usada para la instancia EC2"
-  value       = aws_instance.server.ami
-}
-
-# Salida para la Key Pair
 output "key_pair_name" {
-  description = "Nombre del Key Pair"
+  description = "El nombre de la clave SSH creada"
   value       = aws_key_pair.kp.key_name
 }
 
-# Output para la URL de la imagen Docker (para referencia)
-output "docker_image" {
-  description = "URL de la imagen Docker"
-  value       = local.image
+output "security_group_id" {
+  description = "ID del grupo de seguridad creado"
+  value       = aws_security_group.sg.id
+}
+
+output "launch_template_id" {
+  description = "ID de la plantilla de lanzamiento"
+  value       = aws_launch_template.lt.id
+}
+
+output "autoscaling_group_name" {
+  description = "El nombre del grupo de autoescalado"
+  value       = aws_autoscaling_group.asg.name
+}
+
+output "target_group_arn" {
+  description = "El ARN del grupo de destino (target group)"
+  value       = aws_lb_target_group.tg.arn
+}
+
+output "bucket_name" {
+  description = "Nombre del bucket de S3 para el estado de Terraform"
+  value       = "tf-state-ms-users-unique-123" # Cambia esto si el nombre del bucket es diferente
+}
+
+output "dynamodb_table_name" {
+  description = "Nombre de la tabla DynamoDB para bloqueo del estado"
+  value       = "tf-locks-ms-users" # Cambia esto si el nombre de la tabla es diferente
 }
