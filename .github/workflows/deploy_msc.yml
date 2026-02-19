@@ -20,6 +20,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}  # <--- IP DEL SERVIDOR QUE CREASTE EN ESTA CUENTA
           username: ec2-user
           key: ${{ secrets.EC2_KEY }}    # <--- EL CONTENIDO DEL PEM
+          port: 443
           script: |
             # Login Docker
             echo "${{ secrets.DOCKER_PASS }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
