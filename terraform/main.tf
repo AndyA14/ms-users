@@ -66,7 +66,7 @@ resource "local_file" "pem" {
 
 # --- SECURITY GROUP ---
 resource "aws_security_group" "sg" {
-  name        = "sg-${local.name}"
+  name        = "custom-sg-${local.name}"
   vpc_id      = data.aws_vpc.default.id
 
   # 1. SSH Hack (443)
