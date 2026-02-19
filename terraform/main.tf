@@ -190,9 +190,3 @@ resource "aws_autoscaling_group" "asg" {
   }
 }
 
-# --- Elastic IP (EIP) ---
-resource "aws_eip" "elastic_ip" {
-  instance = aws_autoscaling_group.asg.instances[0].id
-}
-
-
