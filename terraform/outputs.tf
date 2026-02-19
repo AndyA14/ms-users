@@ -78,34 +78,17 @@ output "autoscaling_group_launch_template_version" {
   description = "Versión del Launch Template en el Auto Scaling Group"
 }
 
-# Elastic IP (si se hubiera utilizado en el código)
-output "elastic_ip" {
-  value = lookup(aws_eip.infra_eip, "public_ip", null)
-  description = "Elastic IP asociado a la instancia EC2"
-}
-
-# Instancias EC2 públicas y privadas - Si no hay ASG, muestra esta información
-output "instance_public_ip" {
-  value       = aws_instance.infra_server != null ? aws_instance.infra_server.public_ip : null
-  description = "La IP pública de la instancia EC2"
-}
-
-output "instance_private_ip" {
-  value       = aws_instance.infra_server != null ? aws_instance.infra_server.private_ip : null
-  description = "La IP privada de la instancia EC2"
-}
-
-# Instancias dentro del Auto Scaling Group - Si hay ASG
+# Instancias EC2 dentro del Auto Scaling Group (ASG)
 output "asg_instances_public_ips" {
   value = flatten([
-    for instance in aws_autoscaling_group.asg.instances : instance.public_ip
+    for instance in data.aws_autoscaling_group.asg_instances.instances : instance.public_ip
   ])
   description = "Las IPs públicas de las instancias en el Auto Scaling Group"
 }
 
 output "asg_instances_private_ips" {
   value = flatten([
-    for instance in aws_autoscaling_group.asg.instances : instance.private_ip
+    for instance in data.aws_autoscaling_group.asg_instances.instances : instance.private_ip
   ])
   description = "Las IPs privadas de las instancias en el Auto Scaling Group"
 }
